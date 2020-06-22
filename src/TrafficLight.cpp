@@ -12,7 +12,9 @@ T MessageQueue<T>::receive()
     // The received object should then be returned by the receive function.
     std::unique_lock<std::mutex> lck(_mutex);
     _condition.wait(lck, [this]{ return !_queue.empty(); });
-    return std::move(_queue.front());
+    T msg = std::move(_queue.back()); // get the most recent message
+    _queue.pop_back();
+    return msg; // will not be copied due to return value optimization (RVO) in C++
 }
 
 template <typename T>
@@ -66,10 +68,12 @@ void TrafficLight::cycleThroughPhases()
     // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles.
     int duration = rand()%2000 + 4000;
     auto previous_timestamp = std::chrono::system_clock::now();
+
     while(true) {
         auto current_timestamp = std::chrono::system_clock::now();
         auto time_diff = current_timestamp - previous_timestamp;
         std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_diff);
+
         if(diff.count() > duration) {
             _currentPhase = _currentPhase == TrafficLightPhase::red ? TrafficLightPhase::green : TrafficLightPhase::red;
             // send message to message queue
